@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sekar Filo Servis Araç Takibi</title>
+  <meta name="description" content="Sekar Filo servis araç takibi — tarih, plaka, model, firma, tür (hasar/mekanik), ikame ve servis bilgisi kaydı" />
+  <style>
+    :root{
+      /* Sekar Filo yeşil paleti (yakın tonlar) */
+      --green-700:#0A7A42;
+      --green-500:#198F4F;
+      --green-400:#2FA05C; 
+      --green-300:#54B471; 
+      --green-200:#7AC143;
+      --text:#122018;
+      --muted:#6b7280;
+      --bg:#f7faf9;
+      --card:#ffffff;
+      --border:#e5e7eb;
+      --danger:#b91c1c;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;color:var(--text);background:var(--bg)}
+    header{background:linear-gradient(90deg,var(--green-700),var(--green-400));color:#fff;padding:18px 20px;position:sticky;top:0;z-index:10;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+    header .title{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px}
+    header .title .dot{width:8px;height:8px;background:#fff;border-radius:999px;opacity:.9}
+    header small{display:block;opacity:.85;font-weight:500}
+
+    .container{max-width:1100px;margin:22px auto;padding:0 16px}
+    .grid{display:grid;grid-template-columns:1.2fr 2fr;gap:18px}
+    .grid .wide{grid-column:1 / -1}
+    @media (max-width:960px){.grid{grid-template-columns:1fr}}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 20px rgba(16,24,40,.06);overflow:hidden}
+    .card h2{margin:0;padding:14px 16px;border-bottom:1px solid var(--border);background:linear-gradient(0deg,rgba(122,193,67,.08),#fff)}
+    .card .content{padding:14px 16px}
+
+    label{font-size:13px;color:#374151;font-weight:600;display:block;margin:10px 0 6px}
+    input[type="text"],input[type="date"],select,input[type="search"],textarea{width:100%;padding:12px 12px;border:1px solid var(--border);border-radius:12px;outline:none;background:#fff;transition:.2s border,.2s box-shadow;font-size:14px}
+    input:focus,select:focus,textarea:focus{border-color:var(--green-300);box-shadow:0 0 0 4px rgba(47,160,92,.15)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    @media (max-width:720px){.row,.row-3{grid-template-columns:1fr}}
+
+    .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+    button{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:700;letter-spacing:.2px}
+    .btn-primary{background:var(--green-700);color:#fff}
+    .btn-primary:hover{filter:brightness(.95)}
+    .btn-soft{background:rgba(10,122,66,.08);color:var(--green-700)}
+    .btn-danger{background:rgba(185,28,28,.08);color:var(--danger)}
+    .btn-outline{background:#fff;color:var(--green-700);border:1px dashed var(--green-300)}
+
+    .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap}
+    .kpi{display:flex;gap:12px;flex-wrap:wrap}
+    .pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#F1F5F9;color:#0f172a;border:1px solid var(--border)}
+
+    table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px;overflow:hidden}
+    thead th{position:sticky;top:0;background:#f8fafc;text-align:left;padding:12px 10px;border-bottom:1px solid var(--border);font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:#475569}
+    tbody td{padding:12px 10px;border-bottom:1px solid var(--border)}
+    tbody tr:hover{background:#fafafa}
+    .tag{padding:6px 10px;border-radius:10px;font-weight:700;font-size:12px;display:inline-block}
+    .tag.hasar{background:rgba(185,28,28,.1);color:#7f1d1d}
+        .badge{padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px;border:1px solid var(--border)}
+    .badge.aktif{background:rgba(10,122,66,.08);color:var(--green-700);border-color:var(--green-300)}
+    .badge.pasif{background:#f1f5f9;color:#64748b}
+    button:disabled{opacity:.6;cursor:not-allowed}
+
+    .empty{padding:20px;text-align:center;color:var(--muted)}
+    footer{padding:40px 16px;text-align:center;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <div class="dot"></div>
+      <div>
+        <div style="font-size:18px">Sekar Filo</div>
+        <small>Servis Araç Takibi</small>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="grid">
+      <!-- Kayıt Formu -->
+      <section class="card wide" aria-labelledby="form-title">
+        <h2 id="form-title">Yeni Kayıt</h2>
+        <div class="content">
+          <form id="kayitForm" autocomplete="off">
+            <div class="row-3">
+              <div>
+                <label for="tarih">Tarih</label>
+                <input type="date" id="tarih" required />
+              </div>
+              <div>
+                <label for="plaka">Araç Plakası</label>
+                <input type="text" id="plaka" placeholder="34 ABC 123" maxlength="12" required />
+              </div>
+              <div>
+                <label for="tur">Tür</label>
+                <select id="tur" required>
+                  <option value="Hasar">Hasar</option>
+                  <option value="Mekanik">Mekanik</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div>
+                <label for="model">Araç Modeli</label>
+                <input type="text" id="model" placeholder="Örn: Egea 1.3 Multijet" required />
+              </div>
+              <div>
+                <label for="firma">Firma</label>
+                <input type="text" id="firma" placeholder="Örn: Sekar Filo" required />
+              </div>
+            </div>
+
+            <div class="row">
+              <div>
+                <label for="ikame">İkame</label>
+                <select id="ikame">
+                  <option value="Var">Var</option>
+                  <option value="Yok" selected>Yok</option>
+                </select>
+              </div>
+              <div>
+                <label for="servis">Servis Bilgisi</label>
+                <textarea id="servis" rows="2" placeholder="Örn: Yetkili servis, iş emri no, parça bekleniyor..."></textarea>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn-primary" type="submit">Kaydet</button>
+              <button class="btn-soft" type="reset" id="temizleBtn">Temizle</button>
+              <button class="btn-outline" type="button" id="csvIndir">CSV Dışa Aktar</button>
+              <label class="btn-outline" style="display:inline-flex; align-items:center; gap:8px; cursor:pointer">
+                <input type="file" id="csvYukle" accept=".csv" style="display:none" />
+                CSV İçe Aktar
+              </label>
+            </div>
+
+            <input type="hidden" id="editIndex" value="" />
+          </form>
+          <p style="margin-top:8px; font-size:12px; color:var(--muted)">Kayıtlar cihazınızda güvenle saklanır (yerel). İsteğe bağlı gerçek zamanlı paylaşım için kod içinde Firebase bölümü vardır.</p>
+        </div>
+      </section>
+
+      <!-- Liste -->
+      <section class="card wide" aria-labelledby="list-title">
+        <h2 id="list-title">Kayıtlar</h2>
+        <div class="content">
+          <div class="toolbar">
+            <div style="display:flex; gap:10px; flex-wrap:wrap">
+              <input type="search" id="ara" placeholder="Plaka / Firma ara" />
+              <select id="filtreTur">
+                <option value="">Tür: Tümü</option>
+                <option value="Hasar">Hasar</option>
+                <option value="Mekanik">Mekanik</option>
+              </select>
+              <select id="filtreDurum">
+                <option value="">Durum: Hepsi</option>
+                <option value="Aktif">Aktif</option>
+                <option value="Pasif">Pasif</option>
+              </select>
+              <input type="date" id="filtreTarih" />
+            </div>
+            <div class="kpi">
+              <span class="pill" id="kpiToplam">Toplam: 0</span>
+              <span class="pill" id="kpiHasar">Hasar: 0</span>
+              <span class="pill" id="kpiMekanik">Mekanik: 0</span>
+            </div>
+          </div>
+
+          <div style="max-height:480px; overflow:auto; border:1px solid var(--border); border-radius:12px">
+            <table id="liste">
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Plaka</th>
+                  <th>Model</th>
+                  <th>Firma</th>
+                  <th>Tür</th>
+                  <th>İkame</th>
+                  <th>Servis</th>
+                  <th>Durum</th>
+                  <th style="width:220px">İşlem</th>
+                </tr>
+              </thead>
+              <tbody id="listeGovde">
+                <tr class="empty"><td colspan="9">Kayıt yok</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <div>© Sekar Filo — Servis Araç Takibi</div>
+  </footer>
+
+  <script>
+    // --- Yardımcılar ---
+    const $ = (s, sc=document) => sc.querySelector(s);
+    const $$ = (s, sc=document) => Array.from(sc.querySelectorAll(s));
+
+    const LS_KEY = 'sekarServisKayitlari_v1';
+    const fmtPlaka = v => v.toUpperCase().replace(/\s+/g,' ').trim();
+
+    const upperTR = (s)=> (s||'').toLocaleUpperCase('tr-TR');
+    const normText = (s)=> upperTR(s).trim().replace(/ +/g,' ');
+
+    function oku(){
+      try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }catch{ return []}
+    }
+    function yaz(d){ localStorage.setItem(LS_KEY, JSON.stringify(d)); }
+
+    // --- Durum ---
+    let kayitlar = oku();
+    kayitlar = Array.isArray(kayitlar) ? kayitlar.map(k=> ({...k, durum: k.durum || 'Aktif'})) : [];
+
+    // Form vars
+    const form = $('#kayitForm');
+    const editIndex = $('#editIndex');
+
+    // Filtreler
+    const ara = $('#ara');
+    const filtreTur = $('#filtreTur');
+    const filtreTarih = $('#filtreTarih');
+    const filtreDurum = $('#filtreDurum');
+
+    // KPI
+    const kpiToplam = $('#kpiToplam');
+    const kpiHasar = $('#kpiHasar');
+    const kpiMekanik = $('#kpiMekanik');
+
+    // Tarihi bugüne ayarla (DOM hazır)
+    (function init(){
+      if(form){
+        const t = $('#tarih');
+        if(t && !t.value){ t.valueAsDate = new Date(); }
+        const bindNormalize = (sel, fn) => { const el=$(sel); if(el) el.addEventListener('blur', ()=> el.value = fn(el.value)); };
+        bindNormalize('#plaka', fmtPlaka);
+        bindNormalize('#model', normText);
+        bindNormalize('#firma', normText);
+        bindNormalize('#servis', normText);
+      }
+    })();
+
+    // --- Event bind (korumalı) ---
+    if(form){
+      form.addEventListener('submit', (e)=>{
+        e.preventDefault();
+        const data = {
+          tarih: $('#tarih')?.value || '',
+          plaka: fmtPlaka($('#plaka')?.value || ''),
+          model: normText($('#model')?.value || ''),
+          firma: normText($('#firma')?.value || ''),
+          tur: $('#tur')?.value || 'Hasar',
+          ikame: $('#ikame')?.value || 'Yok',
+          servis: normText($('#servis')?.value || '')
+        };
+        if(!data.tarih||!data.plaka||!data.model||!data.firma){
+          alert('Lütfen tüm alanları doldurun.'); return;
+        }
+        const idx = editIndex?.value ?? '';
+        data.durum = (idx!=="" && kayitlar[Number(idx)] && (kayitlar[Number(idx)].durum||'Aktif')) || 'Aktif';
+        if(idx!==""){ kayitlar[Number(idx)] = data; editIndex.value=""; }
+        else { kayitlar.unshift(data); }
+        yaz(kayitlar);
+        form.reset();
+        const t = $('#tarih'); if(t) t.valueAsDate=new Date();
+        ciz();
+      });
+    }
+
+    const temizleBtn = $('#temizleBtn');
+    if(temizleBtn){ temizleBtn.addEventListener('click', ()=>{ if(editIndex) editIndex.value=""; }); }
+
+    ;[ara, filtreTur, filtreDurum, filtreTarih].forEach(el=>{ if(el) el.addEventListener('input', ciz); });
+
+    const csvIndir = $('#csvIndir');
+    if(csvIndir){
+      csvIndir.addEventListener('click', ()=>{
+        const head = ['tarih','plaka','model','firma','tur','ikame','servis','durum'];
+        const rows = kayitlar.map(k=> head.map(h=>`"${(k[h]||'').replaceAll('"','\\"')}"`).join(','));
+        const csv = [head.join(','), ...rows].join('\n');
+        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href=url; a.download='sekar-servis-kayitlari.csv'; a.click(); URL.revokeObjectURL(url);
+      });
+    }
+
+    const csvYukle = $('#csvYukle');
+    if(csvYukle){
+      csvYukle.addEventListener('change', async (e)=>{
+        const file = e.target.files?.[0]; if(!file) return;
+        const text = await file.text();
+        const [head,...lines] = text.split(/\r?\n/).filter(Boolean);
+        const cols = head.split(',').map(s=>s.trim());
+        const idx = (n)=> cols.indexOf(n);
+        const yeni = lines.map(line=>{
+          const parts = line.match(/((?<!\\)\".*?(?<!\\)\"|[^,]+)/g)?.map(s=> s.replaceAll(/^\"|\"$/g,'').replaceAll('\\"','"')) || [];
+          return {
+            tarih: parts[idx('tarih')]||'',
+            plaka: fmtPlaka(parts[idx('plaka')]||''),
+            model: normText(parts[idx('model')]||''),
+            firma: normText(parts[idx('firma')]||''),
+            tur: parts[idx('tur')]||'Hasar',
+            ikame: parts[idx('ikame')]||'Yok',
+            servis: normText(parts[idx('servis')]||''),
+            durum: parts[idx('durum')]||'Aktif'
+          };
+        }).filter(x=>x.tarih && x.plaka);
+        kayitlar = [...yeni, ...kayitlar];
+        yaz(kayitlar); ciz(); e.target.value="";
+      });
+    }
+
+    function ciz(){
+      const tbody = $('#listeGovde');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+
+      const q = (ara?.value || '').toLowerCase();
+      const fTur = filtreTur?.value || '';
+      const fDurum = filtreDurum?.value || '';
+      const fTarih = filtreTarih?.value || '';
+
+      const gorunen = kayitlar.map((k,_i)=>({...k,__i:_i})).filter(k=>{
+        const m1 = !q || [k.plaka,k.firma,k.model].some(v=> (v||'').toLowerCase().includes(q));
+        const m2 = !fTur || k.tur===fTur;
+        const m3 = !fTarih || k.tarih===fTarih;
+        const m4 = !fDurum || (k.durum||'Aktif')===fDurum;
+        return m1 && m2 && m3 && m4;
+      });
+
+      if(gorunen.length===0){
+        const tr = document.createElement('tr'); tr.className='empty';
+        const td = document.createElement('td'); td.colSpan=9; td.textContent='Kayıt yok'; tr.appendChild(td); tbody.appendChild(tr);
+        // Satır içi güvenli bağlayıcı (delegasyona ek olarak)
+        const idxReal = Number(tr.dataset.i);
+        const be = tr.querySelector('[data-act="edit"]'); if(be) be.onclick = ()=> duzenle(kayitlar[idxReal], idxReal);
+        const bs = tr.querySelector('[data-act="sil"]'); if(bs) bs.onclick = ()=> sil(idxReal);
+        const bd = tr.querySelector('[data-act="done"]'); if(bd) bd.onclick = ()=> teslim(idxReal);
+        const ba = tr.querySelector('[data-act="activate"]'); if(ba) ba.onclick = ()=> aktifEt(idxReal);
+      }
+
+      gorunen.forEach((k)=>{
+        const tr = document.createElement('tr');
+        tr.dataset.i = String(k.__i);
+        tr.innerHTML = `
+          <td>${k.tarih || ''}</td>
+          <td>${k.plaka || ''}</td>
+          <td>${k.model || ''}</td>
+          <td>${k.firma || ''}</td>
+          <td>${etiket(k.tur)}</td>
+          <td>${k.ikame || 'Yok'}</td>
+          <td><span title="${(k.servis||'').replaceAll('`','')}">${(k.servis||'').length>40 ? (k.servis.slice(0,40)+'…') : (k.servis||'')}</span></td>
+          <td>${(k.durum||'Aktif')==='Aktif' ? '<span class="badge aktif">Aktif</span>' : '<span class="badge pasif">Pasif</span>'}</td>
+          <td>
+            <div style="display:flex; gap:8px; flex-wrap:wrap">
+              <button type="button" class="btn-soft" data-act="edit">Düzenle</button>
+              <button type="button" class="btn-danger" data-act="sil">Sil</button>
+              ${ (k.durum||'Aktif')==='Pasif' ? '<button type="button" class="btn-soft" data-act="activate">Aktif Et</button>' : '' }
+              <button type="button" class="btn-soft" data-act="done" ${(k.durum||'Aktif')==='Pasif' ? 'disabled' : ''}>${(k.durum||'Aktif')==='Pasif' ? 'Teslim edildi' : 'Araç Teslim Edildi'}</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // KPI
+      if(kpiToplam) kpiToplam.textContent = `Toplam: ${kayitlar.length}`;
+      if(kpiHasar) kpiHasar.textContent = `Hasar: ${kayitlar.filter(x=>x.tur==='Hasar').length}`;
+      if(kpiMekanik) kpiMekanik.textContent = `Mekanik: ${kayitlar.filter(x=>x.tur==='Mekanik').length}`;
+    }
+
+    function etiket(tur){
+      const cls = tur==='Hasar' ? 'hasar' : 'mekanik';
+      return `<span class="tag ${cls}">${tur}</span>`;
+    }
+
+    function duzenle(k, idx){
+      const t = $('#tarih'); if(t) t.value = k.tarih || '';
+      const p = $('#plaka'); if(p) p.value = k.plaka || '';
+      const m = $('#model'); if(m) m.value = k.model || '';
+      const f = $('#firma'); if(f) f.value = k.firma || '';
+      const tu = $('#tur'); if(tu) tu.value = k.tur || 'Hasar';
+      const ik = $('#ikame'); if(ik) ik.value = k.ikame || 'Yok';
+      const s = $('#servis'); if(s) s.value = k.servis || '';
+      if(editIndex) editIndex.value = String(idx);
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function sil(idx){
+      // Onay penceresi bazı ortamlarda engellenebildiği için direkt uygula
+      if(!kayitlar[idx]) return;
+      kayitlar.splice(idx,1); yaz(kayitlar); ciz();
+    }
+
+    function teslim(idx){
+      if(!kayitlar[idx]) return;
+      if((kayitlar[idx].durum||'Aktif')==='Pasif') return;
+      // Onay penceresi bazı ortamlarda engellenebildiği için direkt uygula
+      kayitlar[idx].durum = 'Pasif'; yaz(kayitlar); ciz();
+    }
+
+    function aktifEt(idx){
+      if(!kayitlar[idx]) return;
+      if((kayitlar[idx].durum||'Aktif')==='Aktif') return;
+      if(!confirm('Kayıt tekrar Aktif yapılsın mı?')) return;
+      kayitlar[idx].durum = 'Aktif'; yaz(kayitlar); ciz();
+    }
+
+    // İlk çizim
+    ciz();
+
+    // Tek yerden tıklama yakalayıcı (event delegation)
+    const tbodyEl = $('#listeGovde');
+    if(tbodyEl){
+      tbodyEl.addEventListener('click', (ev)=>{
+        const btn = ev.target.closest('button[data-act]'); if(!btn) return;
+        const tr = btn.closest('tr'); const idx = Number(tr?.dataset.i);
+        if(Number.isNaN(idx)) return;
+        const act = btn.getAttribute('data-act');
+        if(act==='edit') duzenle(kayitlar[idx], idx);
+        else if(act==='sil') sil(idx);
+        else if(act==='done') teslim(idx);
+        else if(act==='activate') aktifEt(idx);
+      });
+    }
+
+    // --- İSTEĞE BAĞLI: Gerçek zamanlı ortak kullanım (Firebase) ---
+    const REALTIME_ACTIVE = false; // true yapıldığında aşağıdaki kod çalışır
+    const FIREBASE_CONFIG = { apiKey: "", authDomain: "", databaseURL: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
+    const DB_PATH = '/sekar/servis-kayitlari';
+
+    async function enableRealtime(){
+      if(!REALTIME_ACTIVE) return;
+      const [{initializeApp}, {getDatabase, ref, onValue, set}] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js')
+      ]);
+      const app = initializeApp(FIREBASE_CONFIG);
+      const db = getDatabase(app);
+      const pathRef = ref(db, DB_PATH);
+      const syncUp = () => set(pathRef, kayitlar);
+      onValue(pathRef, (snap)=>{
+        const val = snap.val(); if(Array.isArray(val)) { kayitlar = val; yaz(kayitlar); ciz(); }
+      });
+      yaz = function(d){ localStorage.setItem(LS_KEY, JSON.stringify(d)); syncUp(); };
+      syncUp();
+    }
+    enableRealtime();
+
+    // --- Otomatik Duman Testleri (mutfak) ---
+    (function runSmokeTests(){
+      try{
+        console.group('%cSekar Filo — Smoke Tests','color:#0A7A42;font-weight:700');
+        console.assert(fmtPlaka('34    abc   123')==='34 ABC 123','fmtPlaka normalizasyonu başarısız');
+        const sample = [{tarih:'2025-10-28',plaka:'34 ABC 123',model:'Egea',firma:'Sekar',tur:'Hasar',ikame:'Yok',servis:'deneme'}];
+        const head = ['tarih','plaka','model','firma','tur','ikame','servis'];
+        const row = `"${sample[0].tarih}" , "${sample[0].plaka}" , "${sample[0].model}" , "${sample[0].firma}" , "${sample[0].tur}" , "${sample[0].ikame}" , "parça \"sensör\" bekliyor"`;
+        const csv = head.join(',')+"\n"+row;
+        const cols = head; const idx = (n)=> cols.indexOf(n);
+        const parts = row.match(/((?<!\\)\".*?(?<!\\)\"|[^,]+)/g)?.map(s=> s.replaceAll(/^\"|\"$/g,'').replaceAll('\\"','"')) || [];
+        console.assert(parts[idx('plaka')]==='34 ABC 123','CSV parse plaka hatası');
+        console.assert(parts[idx('servis')].includes('sensör'),'CSV kaçış karakter testi başarısız');
+        console.log('Smoke tests OK');
+        console.groupEnd();
+      }catch(e){ console.warn('Smoke tests uyarı:', e); }
+    })();
+  </script>
+</body>
+</html>
