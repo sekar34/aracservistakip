@@ -267,10 +267,18 @@
           alert('Lütfen tüm alanları doldurun.'); return;
         }
         const idx = editIndex?.value ?? '';
-        data.durum = (idx!=="" && kayitlar[Number(idx)] && (kayitlar[Number(idx)].durum||'Aktif')) || 'Aktif';
-        if(idx!==""){ kayitlar[Number(idx)] = data; editIndex.value=""; }
+        // mevcut durum / id koru
+        const mevcut = (idx!=="" && kayitlar[Number(idx)]) || null;
+        data.durum = (mevcut && (mevcut.durum||'Aktif')) || 'Aktif';
+        data.id = (mevcut && mevcut.id) || (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random().toString(16).slice(2));
+
+        // Önce UI'yı hızlı hissettirmek için yerelde güncelle
+        if(idx!=="") { kayitlar[Number(idx)] = data; editIndex.value=""; }
         else { kayitlar.unshift(data); }
         yaz(kayitlar);
+        // Buluta yaz (FireStore)
+        if(window.__FS__?.upsertCloud){ window.__FS__.upsertCloud(data).catch(console.error); }
+
         form.reset();
         const t = $('#tarih'); if(t) t.valueAsDate=new Date();
         ciz();
@@ -397,23 +405,26 @@
     }
 
     function sil(idx){
-      // Onay penceresi bazı ortamlarda engellenebildiği için direkt uygula
       if(!kayitlar[idx]) return;
+      const id = kayitlar[idx].id;
       kayitlar.splice(idx,1); yaz(kayitlar); ciz();
+      if(window.__FS__?.deleteCloud && id){ window.__FS__.deleteCloud(id).catch(console.error); }
     }
 
     function teslim(idx){
       if(!kayitlar[idx]) return;
       if((kayitlar[idx].durum||'Aktif')==='Pasif') return;
-      // Onay penceresi bazı ortamlarda engellenebildiği için direkt uygula
       kayitlar[idx].durum = 'Pasif'; yaz(kayitlar); ciz();
+      const rec = kayitlar[idx];
+      if(window.__FS__?.upsertCloud && rec){ window.__FS__.upsertCloud(rec).catch(console.error); }
     }
 
     function aktifEt(idx){
       if(!kayitlar[idx]) return;
       if((kayitlar[idx].durum||'Aktif')==='Aktif') return;
-      if(!confirm('Kayıt tekrar Aktif yapılsın mı?')) return;
       kayitlar[idx].durum = 'Aktif'; yaz(kayitlar); ciz();
+      const rec = kayitlar[idx];
+      if(window.__FS__?.upsertCloud && rec){ window.__FS__.upsertCloud(rec).catch(console.error); }
     }
 
     // İlk çizim
@@ -435,27 +446,84 @@
     }
 
     // --- İSTEĞE BAĞLI: Gerçek zamanlı ortak kullanım (Firebase) ---
-    const REALTIME_ACTIVE = false; // true yapıldığında aşağıdaki kod çalışır
-    const FIREBASE_CONFIG = { apiKey: "", authDomain: "", databaseURL: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
-    const DB_PATH = '/sekar/servis-kayitlari';
+    const REALTIME_ACTIVE = true; // Gerçek zamanlı ortak kullanım açık
+const FIREBASE_MODE = 'firestore'; // 'firestore' tercih edildi (RTDB yerine)
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB-xEmeTVN8oiB4FZzV4UpJpAHkyDHYF4U",
+  authDomain: "sekar-filo.firebaseapp.com",
+  projectId: "sekar-filo",
+  storageBucket: "sekar-filo.appspot.com",
+  messagingSenderId: "61274893830",
+  appId: "1:61274893830:web:c9dfdf8baf0500178f9d87"
+};
+const FS_COLL = 'sekar-servis-kayitlari'; // Firestore koleksiyonu (her kayıt ayrı doküman)
 
-    async function enableRealtime(){
-      if(!REALTIME_ACTIVE) return;
-      const [{initializeApp}, {getDatabase, ref, onValue, set}] = await Promise.all([
-        import('https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js'),
-        import('https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js')
-      ]);
-      const app = initializeApp(FIREBASE_CONFIG);
-      const db = getDatabase(app);
-      const pathRef = ref(db, DB_PATH);
-      const syncUp = () => set(pathRef, kayitlar);
-      onValue(pathRef, (snap)=>{
-        const val = snap.val(); if(Array.isArray(val)) { kayitlar = val; yaz(kayitlar); ciz(); }
+async function enableRealtime(){
+  if(!REALTIME_ACTIVE) return;
+  const [appMod, fsMod, authMod] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js'),
+  ]);
+  const { initializeApp } = appMod;
+  const { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } = fsMod;
+  const { getAuth, signInAnonymously } = authMod;
+
+  const app = initializeApp(FIREBASE_CONFIG);
+  const auth = getAuth(app);
+  try { await signInAnonymously(auth); } catch(e){ console.warn('Anon auth başarısız (devam ediliyor):', e?.message||e); }
+
+  const db = getFirestore(app);
+  const coll = collection(db, FS_COLL);
+
+  // Yerelde id yoksa üret (geriye dönük uyum)
+  try {
+    kayitlar = (kayitlar||[]).map(k=> ({...k, id: k.id || (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random().toString(16).slice(2))}));
+    yaz(kayitlar);
+  } catch {}
+
+  // Bulut -> Yerel (anlık dinleme)
+  const qref = query(coll, orderBy('createdAt','desc'));
+  onSnapshot(qref, (snap)=>{
+    const list = [];
+    snap.forEach(d=>{
+      const v = d.data()||{}; list.push({
+        id: d.id,
+        tarih: v.tarih||'',
+        plaka: v.plaka||'',
+        model: v.model||'',
+        firma: v.firma||'',
+        tur: v.tur||'Hasar',
+        ikame: v.ikame||'Yok',
+        servis: v.servis||'',
+        durum: v.durum||'Aktif',
+        createdAt: v.createdAt||null
       });
-      yaz = function(d){ localStorage.setItem(LS_KEY, JSON.stringify(d)); syncUp(); };
-      syncUp();
-    }
-    enableRealtime();
+    });
+    // Yereli bulut ile senkron tut ve çiz
+    kayitlar = list;
+    localStorage.setItem(LS_KEY, JSON.stringify(kayitlar));
+    ciz();
+  });
+
+  // --- Buluta yazma yardımcıları ---
+  async function upsertCloud(rec){
+    const id = rec.id || (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random().toString(16).slice(2));
+    const ref = doc(db, FS_COLL, id);
+    const payload = { ...rec, id, createdAt: rec.createdAt || serverTimestamp() };
+    await setDoc(ref, payload, { merge: true });
+    return id;
+  }
+  async function deleteCloud(id){
+    const ref = doc(db, FS_COLL, id); await deleteDoc(ref);
+  }
+
+  // Global işlevleri bulutla güncelle (mevcut UI akışını bozmadan)
+  // Kaydet/Güncelle sırasında form submit içinde çağıracağız.
+  window.__FS__ = { upsertCloud, deleteCloud };
+}
+
+enableRealtime();
 
     // --- Otomatik Duman Testleri (mutfak) ---
     (function runSmokeTests(){
