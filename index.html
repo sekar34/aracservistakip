@@ -27,7 +27,7 @@
     header .title .dot{width:8px;height:8px;background:#fff;border-radius:999px;opacity:.9}
     header small{display:block;opacity:.85;font-weight:500}
 
-    .container{max-width:1100px;margin:22px auto;padding:0 16px}
+    .container{max-width:1600px;margin:16px auto;padding:0 8px}
     .grid{display:grid;grid-template-columns:1.2fr 2fr;gap:18px}
     .grid .wide{grid-column:1 / -1}
     @media (max-width:960px){.grid{grid-template-columns:1fr}}
@@ -361,13 +361,13 @@
         const tr = document.createElement('tr');
         tr.dataset.i = String(k.__i);
         tr.innerHTML = `
-          <td>${k.tarih || ''}</td>
+          <td>${(k.tarih||'').length>=10 ? (k.tarih.slice(8,10)+'.'+k.tarih.slice(5,7)+'.'+k.tarih.slice(2,4)) : (k.tarih||'')}</td>
           <td>${k.plaka || ''}</td>
           <td>${k.model || ''}</td>
           <td>${k.firma || ''}</td>
           <td>${etiket(k.tur)}</td>
           <td>${k.ikame || 'Yok'}</td>
-          <td><span title="${(k.servis||'').replaceAll('`','')}">${(k.servis||'').length>40 ? (k.servis.slice(0,40)+'…') : (k.servis||'')}</span></td>
+          <td><span title="${(k.servis||'').replaceAll('`','')}">${(k.servis||'').length>40 ? (k.servis.slice(0,10000)+'…') : (k.servis||'')}</span></td>
           <td>${(k.durum||'Aktif')==='Aktif' ? '<span class="badge aktif">Aktif</span>' : '<span class="badge pasif">Pasif</span>'}</td>
           <td>
             <div style="display:flex; gap:8px; flex-wrap:wrap">
